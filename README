@@ -1,0 +1,115 @@
+
+	An elegant, efficient solution to the Quora Datacenter Cooling Challenge.
+
+	In a valid layout of the duct through the rooms in the datacenter:
+		1) Every room must have exactly 2 connections/edges.
+				Rooms that we own "0" must have an incoming and an outgoing edge.
+				Start room "2" must have an outgoing edge and an imaginary incoming edge.
+				End room "3" must have an incoming edge and an imaginary outgoing edge.
+				Rooms that we don't own "1" are assumed to already have 2 edges.
+		2) There are no cycles. The following layout is not valid.
+				2  0--0 
+				|  |  |
+				0  0--0
+				|  
+				0--0--3 
+			Every room above has two edges, but the four rooms in top-right form a cycle.
+			They are not part of the path from room "2" to "3".
+
+	"A valid layout of the duct is one in which each room has two edges and there are no cycles."
+
+
+	Edges can be thought to be direction-less for layout.
+	There are 4 possible edges that a room can have:
+		       UP
+		       |
+      LEFT --- Rm --- RIGHT
+			   |
+			  DOWN
+
+	The LEFT edge of a room is the RIGHT edge of the room to it's left.
+	The UP edge of a room is the DOWN edge of the room above it.
+
+	If we process the rooms left to right, top to bottom, starting with the room at
+	the top-left corner, then we only need to consider the RIGHT and DOWN edges of a room.
+	The top edge of a room would've been handled when the room immediately above it, in the
+	preceeding row, was processed. Similarly the left edge of the room would already have been
+	handled when the room immediately to the left, in the current row, was processed.
+
+	An unprocessed room would look like following:
+
+		|                |
+	 -- Rm     (Or)     Rm      (Or)   -- Rm         (Or)      Rm
+	 
+	 (Case A)         (Case B)          (Case C)              (Case D)
+
+	 In Case A, the room already has 2 connections and we can skip to the next room.
+	 In Case B and Case C, the room has just one connection and we need to add one more if the room is "0".
+	 In Case D, the room has no connections and we must add 2 connections (just 1 if it is "2" or "3").
+
+	 If an unprocessed room has no connections (Case D), then we must connect it both to the right and down:
+				Rm ---
+				 |
+
+
+	If and unprocessed room has just one connection, then we need to connect it first to the right, continue solving,
+	then remove the connection and reconnect down to the room below and then solve.
+
+
+	Preventing Cycles:
+	A cycle is only formed when a room is connected to the room on its right and there's already a path from the room to 
+	the room on its right:
+			
+			0 -- 0 -- 0 -- 0    0 -- 2
+			|              |    |
+			0    1    0 - -0    0    1
+			|         |         |
+			0 -- 0    0    0    0    1
+			R0   R1   R2   R3   R4
+			   
+	In the above example, there's already a path from R1 to R2, so connecting R1 right to R2 would lead to a cycle.
+
+	Therefore to prevent cycles, we need to keep track of the end point (ending room) of the path from a room.
+
+			0 -- 0 -- 0 -- 0    0 -- 2
+			|              |    |
+			0    1    0 -- 0    0    1
+			|         |         |
+			0    0    0    0    0    1
+			R0   R1   R2   R3   R4
+
+	In the above example, the path-end-point of R0 is R2 and vice-versa.
+	The end-point of "2" is R4 and vice-versa.
+	When we make a new connection, we update the end-points:
+
+			0 -- 0 -- 0 -- 0    0 -- 2
+			|              |    |
+			0    1    0 -- 0    0    1
+			|         |         |
+			0 -- 0    0    0    0    1
+			R0   R1   R2   R3   R4
+
+	After connecting R0 right to R1, the path-end-point of R1 is R2 and that of R2 is now R1.
+	We don't really care about of end-point of R0 at this point.	
+	
+	This approach also automatically merges two paths when a connection is made.
+
+		2    0 -- 0 -- 0
+		|    |         |
+		0    0    0    0
+	    R0   R1   R2   R3
+
+	In the above example, the end-point of R0 is "2" and vice-versa.
+	The end-point of R1 is R3 and vice-versa.
+	When we connect R0 to R1 (this does not introduce a cycle is end-point of R1 is not R0),
+	we get the end-points of R0 and R1 and make them "end-point" each-other.
+
+		2    0 -- 0 -- 0           e1 <- endpoint(R0)
+		|    |         |           e2 <- endpoint(R1)
+		0 -- 0    0    0           endpoint(e1) <- e2
+	    R0   R1   R2   R3          endpoint(e2) <- e1
+
+	After connecting R0 to R1 and performing updates as described above, endpoint of "2" is R3 and vice-versa.
+	When a connection is removed, we restore the end-points of the rooms.
+
+	Et voila...
